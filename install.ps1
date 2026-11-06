@@ -129,6 +129,9 @@ $caiResult = & {
 
     $nativeClaude = Join-Path $env:USERPROFILE '.local\bin\claude.exe'
     $useNativeClaude = (Test-Path -LiteralPath $nativeClaude) -and -not $optForceClaude
+    # Google's agy installer puts agy here, and agy updates itself in the background.
+    $nativeAgy = Join-Path $env:LOCALAPPDATA 'agy\bin\agy.exe'
+    $hasNativeAgy = Test-Path -LiteralPath $nativeAgy
     $needsNode = [bool]($selected | Where-Object Kind -eq 'npm')
     $needsWinget = [bool]($selected | Where-Object { $_.Kind -eq 'winget' -or ($_.Kind -eq 'claude' -and -not $useNativeClaude) })
 
@@ -281,7 +284,10 @@ $caiResult = & {
                     if ($useNativeClaude) { 'native install: will run claude update' }
                     elseif ($wg) { Get-WinGetVersion $t.Package }
                 }
-                default { if ($wg) { Get-WinGetVersion $t.Package } }
+                default {
+                    if ($t.Key -eq 'agy' -and $hasNativeAgy) { 'native install: updates itself' }
+                    elseif ($wg) { Get-WinGetVersion $t.Package }
+                }
             }
             if (-not $v) { $v = if ($wg -or $t.Kind -eq 'npm') { 'NOT FOUND' } else { 'winget unavailable' }; $drift++ }
             [pscustomobject]@{ Key = $t.Key; Name = $t.Name; Source = $t.Kind; Package = $t.Package; Version = $v }
@@ -321,7 +327,12 @@ $caiResult = & {
                 $status = switch ($tool.Kind) {
                     'npm'    { Update-NpmPackage $tool.Package $tool.Command }
                     'claude' { Update-ClaudeCode $tool }
-                    default  { Update-WinGetPackage $tool.Package $tool.Scope }
+                    default  {
+                        if ($tool.Key -eq 'agy' -and $hasNativeAgy) {
+                            Write-Host "Native install found at $nativeAgy; agy updates itself."
+                            'OK (native, self-updating)'
+                        } else { Update-WinGetPackage $tool.Package $tool.Scope }
+                    }
                 }
             } catch {
                 $status = 'Failed'

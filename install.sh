@@ -330,7 +330,20 @@ update_claude() {   # pkg-or-url   sets STATUS
   STATUS='OK (native install)'
 }
 
-run_vendor_script() {   # url   re-running the installer upgrades to the latest build
+# Google's agy installer refuses to run over an existing install; agy updates
+# itself in the background, so an existing native copy is left alone.
+native_agy_path() {
+  if [[ $ENV == gitbash ]]; then echo "$(cygpath -u "$LOCALAPPDATA")/agy/bin/agy.exe"
+  else echo "$HOME/.local/bin/agy"; fi
+}
+
+has_native_agy() { [[ -x $(native_agy_path) ]]; }
+
+run_vendor_script() {   # url
+  if has_native_agy; then
+    echo "Native install found at $(native_agy_path); agy updates itself."
+    STATUS='OK (native, self-updating)'; return 0
+  fi
   curl -fsSL "$1" | bash || { STATUS=Failed; return 1; }
   STATUS='OK (vendor installer)'
 }
@@ -398,6 +411,7 @@ cmd_preview() {
     case $kind in
       winget)
         if [[ $group == app ]] && ! (( HAS_WINDOWS )); then v='skipped (Windows only)'
+        elif [[ $key == agy ]] && has_native_agy; then v='native install: updates itself'
         elif (( winget_ok )); then v=$(winget_version "$pkg"); [[ $v == 'NOT FOUND' ]] && drift=$((drift + 1))
         else v='winget unavailable'; drift=$((drift + 1)); fi ;;
       claude-win|claude-unix)
@@ -406,7 +420,8 @@ cmd_preview() {
         elif (( winget_ok )); then v="$(winget_version "$pkg") (winget)"; [[ $v == 'NOT FOUND'* ]] && drift=$((drift + 1))
         else v='winget unavailable'; drift=$((drift + 1)); fi ;;
       script)
-        if curl -fsSLI -o /dev/null "$pkg"; then v='vendor installer, always latest'
+        if has_native_agy; then v='native install: updates itself'
+        elif curl -fsSLI -o /dev/null "$pkg"; then v='vendor installer, always latest'
         else v='INSTALLER URL UNREACHABLE'; drift=$((drift + 1)); fi ;;
       npm)
         v=$(npm_latest "$pkg")
@@ -458,7 +473,12 @@ cmd_install() {
       STATUS='Skipped (Windows only)'
     else
       case $kind in
-        winget)      if (( WINGET_OK )); then update_winget_pkg "$pkg" "$scope"; else warn 'winget unavailable.'; fi ;;
+        winget)
+          if [[ $key == agy ]] && has_native_agy; then
+            echo "Native install found at $(native_agy_path); agy updates itself."
+            STATUS='OK (native, self-updating)'
+          elif (( WINGET_OK )); then update_winget_pkg "$pkg" "$scope"
+          else warn 'winget unavailable.'; fi ;;
         claude-win)  if (( WINGET_OK )) || [[ -x $(native_claude_path) ]]; then update_claude "$pkg"; else warn 'winget unavailable.'; fi ;;
         claude-unix) update_claude "$pkg" ;;
         script)      run_vendor_script "$pkg" ;;

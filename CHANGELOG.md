@@ -16,6 +16,8 @@ First public release.
 - Upgrades installed packages instead of reinstalling; treats harmless winget
   results (up to date, already installed, restart pending) as success.
 - Keeps an existing native Claude Code install and runs `claude update`.
+- Keeps an existing native `agy` install, which updates itself, instead of
+  adding a second copy.
 - Leaves a Node.js managed by nvm, nvm-windows, fnm or Volta alone.
 - Renames orphaned npm launchers aside instead of failing with `EEXIST`.
 - On npm 12+, allows install scripts for the CLI being installed only

@@ -9,7 +9,7 @@ One command to install, or bring up to date, the AI coding agents and editors yo
 | `codex` | Codex CLI | winget `OpenAI.Codex` | npm `@openai/codex` |
 | `claude` | Claude Code CLI | `claude update` if natively installed, else winget `Anthropic.ClaudeCode` | `claude update`, else [claude.ai/install.sh](https://claude.ai/install.sh) |
 | `opencode` | OpenCode CLI | npm `@opencode/cli` | npm `@opencode/cli` |
-| `agy` | Antigravity CLI | winget `Google.AntigravityCLI` | [antigravity.google/cli/install.sh](https://antigravity.google/cli/install.sh) |
+| `agy` | Antigravity CLI | kept if natively installed (updates itself), else winget `Google.AntigravityCLI` | kept if installed (updates itself), else [antigravity.google/cli/install.sh](https://antigravity.google/cli/install.sh) |
 | `claude-desktop` | Claude Desktop | winget `Anthropic.Claude` | WSL2: winget on the Windows side |
 | `codex-desktop` | Codex Desktop (ships as "ChatGPT") | winget `OpenAI.ChatGPT` | WSL2: winget on the Windows side |
 | `vscode` | VS Code | winget `Microsoft.VisualStudioCode` | WSL2: winget on the Windows side |
