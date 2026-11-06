@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'   # weekly: catches packages renamed or removed upstream
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and catalog checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        run: shellcheck --severity=warning install.sh tests/*.sh
+      - name: install.sh and install.ps1 catalogs match
+        run: bash tests/check-catalog-sync.sh
+      - name: winget IDs still exist in microsoft/winget-pkgs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tests/check-winget-ids.sh
+
+  windows:
+    name: Windows (PowerShell 5.1, PowerShell 7, Git Bash)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -Force -Scope CurrentUser
+          $issues = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Error
+          $issues | Format-Table -AutoSize
+          if ($issues) { exit 1 }
+      - name: Parses in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\install.ps1", [ref]$null, [ref]$errors)
+          if ($errors) { $errors; exit 1 }
+      - name: -List and usage errors
+        shell: pwsh
+        run: |
+          ./install.ps1 -List
+          ./install.ps1 -Only not-a-tool
+          if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE" }
+          $global:LASTEXITCODE = 0
+      - name: Preview (full when the runner has winget)
+        shell: pwsh
+        run: |
+          if (Get-Command winget.exe -ErrorAction SilentlyContinue) { ./install.ps1 -Preview }
+          else { ./install.ps1 -Preview -Only opencode }
+      - name: Git Bash preview
+        shell: bash
+        run: |
+          bash install.sh --list
+          if command -v winget.exe >/dev/null; then bash install.sh --preview
+          else bash install.sh --preview --only opencode; fi
+
+  unix:
+    name: Install CLIs (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # /bin/bash is bash 3.2 on macOS: this keeps the script honest about compatibility.
+      - name: Preview
+        run: /bin/bash install.sh --preview
+      - name: Install every CLI
+        run: /bin/bash install.sh --skip-apps
+      - name: Every CLI runs
+        run: |
+          export NVM_DIR="$HOME/.nvm"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then . "$NVM_DIR/nvm.sh"; fi
+          export PATH="$HOME/.local/bin:$PATH"
+          for c in codex claude opencode agy; do
+            echo "== $c: $(command -v "$c")"
+            "$c" --version
+          done
+      - name: Second run upgrades in place
+        run: /bin/bash install.sh --skip-apps
