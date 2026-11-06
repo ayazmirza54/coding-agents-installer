@@ -248,7 +248,13 @@ $caiResult = & {
         }
         Repair-OrphanNpmShim $prefix $Command
         Repair-OrphanNpmShim $prefix 'codex'   # a stale npm codex launcher would shadow the winget Codex CLI
-        & $npm.Source install --global "$Package@latest" | Out-Host
+        # npm 12+ blocks install scripts by default; allow them for this package only
+        # (OpenCode's postinstall fetches its platform binary).
+        $npmArgs = @('install', '--global')
+        $major = 0
+        [void][int]::TryParse(((& $npm.Source --version | Out-String).Trim() -split '\.')[0], [ref]$major)
+        if ($major -ge 12) { $npmArgs += "--allow-scripts=$Package" }
+        & $npm.Source @npmArgs "$Package@latest" | Out-Host
         if ($LASTEXITCODE -ne 0) { throw "npm exit $LASTEXITCODE. See output above." }
         return "OK ($(Get-NpmLatest $Package))"
     }

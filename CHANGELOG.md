@@ -18,5 +18,7 @@ First public release.
 - Keeps an existing native Claude Code install and runs `claude update`.
 - Leaves a Node.js managed by nvm, nvm-windows, fnm or Volta alone.
 - Renames orphaned npm launchers aside instead of failing with `EEXIST`.
+- On npm 12+, allows install scripts for the CLI being installed only
+  (OpenCode's postinstall downloads its platform binary).
 - Reports which binary each CLI command resolves to and warns about shadowed
   copies.

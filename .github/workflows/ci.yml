@@ -16,7 +16,7 @@ jobs:
     name: Lint and catalog checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: ShellCheck
         run: shellcheck --severity=warning install.sh tests/*.sh
       - name: install.sh and install.ps1 catalogs match
@@ -30,7 +30,7 @@ jobs:
     name: Windows (PowerShell 5.1, PowerShell 7, Git Bash)
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -71,7 +71,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # /bin/bash is bash 3.2 on macOS: this keeps the script honest about compatibility.
       - name: Preview
         run: /bin/bash install.sh --preview

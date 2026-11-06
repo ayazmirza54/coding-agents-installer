@@ -128,7 +128,7 @@ win_ps() {
   local enc
   enc=$(printf '%s' "$1" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
   (
-    [[ $ENV == wsl ]] && cd /mnt/c 2>/dev/null   # avoid "UNC paths are not supported"
+    if [[ $ENV == wsl ]]; then cd /mnt/c 2>/dev/null || exit 1; fi   # avoid "UNC paths are not supported"
     MSYS_NO_PATHCONV=1 "$PS" -NoProfile -NonInteractive -EncodedCommand "$enc" </dev/null
   )
 }
@@ -296,7 +296,13 @@ update_npm_pkg() {   # pkg cmd   sets STATUS
   # A stale npm `codex` launcher would shadow the winget Codex CLI.
   [[ $ENV == gitbash ]] && repair_orphan_shim "$bindir" codex
 
-  npm install --global "$pkg@latest" || { STATUS=Failed; warn "$pkg: npm install failed. See output above."; return 1; }
+  # npm 12+ blocks install scripts by default; allow them for this package only
+  # (OpenCode's postinstall fetches its platform binary).
+  local extra=() major
+  major=$(npm --version 2>/dev/null | cut -d. -f1)
+  [[ $major =~ ^[0-9]+$ ]] && (( major >= 12 )) && extra=(--allow-scripts="$pkg")
+
+  npm install --global "${extra[@]}" "$pkg@latest" || { STATUS=Failed; warn "$pkg: npm install failed. See output above."; return 1; }
   STATUS="OK ($(npm_latest "$pkg"))"
 }
 
